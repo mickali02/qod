@@ -35,10 +35,6 @@ type application struct {
 }
 
 
-func printUB() string {
-    return "Hello, UB!"
-}
-
 func main() {
     // Initialize configuration
     cfg := loadConfig()

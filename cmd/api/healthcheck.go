@@ -6,12 +6,14 @@ import (
 	"net/http"
 )
 
-func (a *applicationDependencies) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
+const version = "1.0.0"
+
+func (a *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	// Create a map to hold healthcheck data.
 	data := map[string]string{
 		"status":      "available",
-		"environment": a.config.environment,
-		"version":     appVersion, 
+		"environment": a.config.env,
+		"version":     version, 
 	}
 
 	jsResponse, err := json.Marshal(data)

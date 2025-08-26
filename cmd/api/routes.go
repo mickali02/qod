@@ -8,9 +8,16 @@ import (
 )
 
 // routes specifies our routes
-func (app *application) routes() http.Handler {
-	router := httprouter.New()
-	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
+func (a *application)routes() http.Handler  {
 
-	return router
+   // setup a new router
+   router := httprouter.New()
+   // handle 404
+   router.NotFound = http.HandlerFunc(a.notFoundResponse)
+  // handle 405
+   router.MethodNotAllowed = http.HandlerFunc(a.methodNotAllowedResponse)
+   // setup routes
+   router.HandlerFunc(http.MethodGet, "/v1/healthcheck", a.healthcheckHandler)
+   return router
+  
 }

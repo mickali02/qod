@@ -9,6 +9,7 @@ const version = "1.0.0"
 
 func (a *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	// Create a map to hold healthcheck data.
+	panic("Apples & Oranges") //deliberate panic
 	data := envelope{
 		"status":      "available",
 		"system_info": map[string]string{

@@ -16,11 +16,7 @@ func (a *application)logError(r *http.Request, err error)  {
 }
 
 // send an error response in JSON
-func (a *application)errorResponseJSON(w http.ResponseWriter,
-                                                   r *http.Request, 
-                                                   status int, 
-                                                   message any)  {
-
+func (a *application)errorResponseJSON(w http.ResponseWriter,r *http.Request,status int, message any)  {
    errorData := envelope{"error": message}
    err := a.writeJSON(w, status, errorData, nil)
    if err != nil {
@@ -30,10 +26,7 @@ func (a *application)errorResponseJSON(w http.ResponseWriter,
 }
 
 // send an error response if our server messes up
-func (a *application)serverErrorResponse(w http.ResponseWriter,
-                                                     r *http.Request, 
-                                                     err error)  {
-
+func (a *application)serverErrorResponse(w http.ResponseWriter, r *http.Request, err error)  {
    // first thing is to log error message
    a.logError(r, err)
    // prepare a response to send to the client
@@ -44,7 +37,6 @@ func (a *application)serverErrorResponse(w http.ResponseWriter,
 
 // send an error response if our client messes up with a 404
 func (a *application)notFoundResponse(w http.ResponseWriter, r *http.Request)  {
-
    // we only log server errors, not client errors
    // prepare a response to send to the client
    message := "the requested resource could not be found"
@@ -52,13 +44,17 @@ func (a *application)notFoundResponse(w http.ResponseWriter, r *http.Request)  {
 }
 
 // send an error response if our client messes up with a 405
-func (a *application)methodNotAllowedResponse(
-                                                     w http.ResponseWriter,
-                                                     r *http.Request)  {
-
+func (a *application)methodNotAllowedResponse(w http.ResponseWriter,r *http.Request)  {
    // we only log server errors, not client errors
    // prepare a formatted response to send to the client
    message := fmt.Sprintf("the %s method is not supported for this resource", r.Method)
 
    a.errorResponseJSON(w, r, http.StatusMethodNotAllowed, message)
 }
+
+// send an error response if our client messes up with a 400 (bad request)
+func (a *application)badRequestResponse(w http.ResponseWriter,
+   r *http.Request,
+   err error) {
+   a.errorResponseJSON(w, r, http.StatusBadRequest, err.Error())
+  }

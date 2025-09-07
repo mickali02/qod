@@ -3,9 +3,13 @@
 package main
 
 import (
+    "context"
 	"flag"
 	"log/slog"
 	"os"
+    "time"
+    "database/sql"
+    _ "github.com/lib/pq"
 )
 
 // Filename: cmd/api/main.go
@@ -19,6 +23,9 @@ import (
 type configuration struct {
     port int
     env string
+    db struct {
+        dsn string
+    }
 }
 
 // Set up Dependency Injection
@@ -32,6 +39,7 @@ type configuration struct {
 type application struct {
     config configuration
     logger *slog.Logger
+    db     *sql.DB
 }
 
 
@@ -40,13 +48,27 @@ func main() {
     cfg := loadConfig()
     // Initialize logger
     logger := setupLogger(cfg.env)
+
+    // ---- START: NEW DATABASE CODE ----
+    // the call to openDB() sets up our connection pool
+    db, err := openDB(cfg)
+    if err != nil {
+        logger.Error(err.Error())
+        os.Exit(1)
+    }
+    // release the database resources before exiting
+    defer db.Close()
+    logger.Info("database connection pool established")
+    // ---- END: NEW DATABASE CODE ----
+
     // Initialize application with dependencies
     app := &application{
         config: cfg,
         logger: logger,
+        db:     db,
     }
     // Run the application
-    err := app.serve()
+    err = app.serve()
     if err != nil {
         logger.Error(err.Error())
         os.Exit(1)
@@ -60,6 +82,10 @@ func loadConfig() configuration {
 
 flag.IntVar(&cfg.port, "port", 4000, "API server port")
 flag.StringVar(&cfg.env,"env","development","Environment(development|staging|production)")
+
+// Add this line to read the database DSN
+flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://comments:fishsticks@localhost/comments", "PostgreSQL DSN")
+
 flag.Parse()
 
 return cfg
@@ -73,4 +99,27 @@ func setupLogger(env string) *slog.Logger {
 
 
 	return logger
+}
+
+func openDB(cfg configuration) (*sql.DB, error) {
+    // open a connection pool
+    db, err := sql.Open("postgres", cfg.db.dsn)
+    if err != nil {
+        return nil, err
+    }
+
+    // set a context to ensure DB operations don't take too long
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    // let's test if the connection pool was created
+    // we trying pinging it with a 5-second timeout
+    err = db.PingContext(ctx)
+    if err != nil {
+        db.Close()
+        return nil, err
+    }
+
+    // return the connection pool (sql.DB)
+    return db, nil
 }

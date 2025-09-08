@@ -1,9 +1,5 @@
-## run/api: run the cmd/api applicatioN
-.PHONY: run/api
-run/api:
-	@echo '--Running application--'
-	@go run ./cmd/api
-	include .envrc
+
+include .envrc
 
 ## run/api: run the cmd/api application
 .PHONY: run/api

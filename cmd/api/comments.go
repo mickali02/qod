@@ -6,7 +6,7 @@ import (
 	"net/http"
 	// import the data package which contains the definition for Comment
 	"github.com/mickali02/qod/internal/data"
-	// "github.com/mickali02/qod/internal/validator" // This was unused, so it's commented out for now
+	// "github.com/mickali02/qod/internal/validator" 
 )
 
 func (a *application) createCommentHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,14 +23,12 @@ func (a *application) createCommentHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// --- FIX START ---
 	// Create a new data.Comment struct and populate it with the data from the request.
 	// We pass a pointer to this struct to the Insert() method.
 	comment := &data.Comment{
 		Content: incomingData.Content,
 		Author:  incomingData.Author,
 	}
-	// --- FIX END ---
 
 	// Add the comment to the database table.
 	// The Insert() method will update the 'comment' variable with the ID, CreatedAt, and Version.

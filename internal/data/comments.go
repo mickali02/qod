@@ -1,9 +1,11 @@
+//Filename: internal/data/comments.go
 package data
 
 import(
 	"context"
 	"database/sql"
 	"time"
+	"errors"
 )
 
 // each name begins with uppercase so that they are exportable/public
@@ -41,3 +43,36 @@ func (c CommentModel) Insert(comment *Comment) error {
 	return c.DB.QueryRowContext(ctx, query, args...).Scan( &comment.ID, &comment.CreatedAt, &comment.Version)
 
 	}
+
+// Get a specific Comment from the comments table
+func (c CommentModel) Get(id int64) (*Comment, error) {
+	// check if the id is valid
+	 if id < 1 {
+		 return nil, ErrRecordNotFound
+	 }
+	// the SQL query to be executed against the database table
+	 query := `
+		 SELECT id, created_at, content, author, version
+		 FROM comments
+		 WHERE id = $1
+		 `
+// declare a variable of type Comment to store the returned comment
+   var comment Comment
+
+// Set a 3-second context/timer
+ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+defer cancel()
+
+err := c.DB.QueryRowContext(ctx, query, id).Scan ( &comment.ID, &comment.CreatedAt, &comment.Content, &comment.Author, &comment.Version,)
+// check for which type of error
+if err != nil {
+    switch {
+        case errors.Is(err, sql.ErrNoRows):
+            return nil, ErrRecordNotFound
+        default:
+            return nil, err
+        }
+    }
+return &comment, nil
+}
+

@@ -2,28 +2,55 @@
 package main
 
 import (
-	//"encoding/json"
 	"fmt"
 	"net/http"
 	// import the data package which contains the definition for Comment
-	//"github.com/mickali02/qod/internal/data" // Now this will be used!
+	"github.com/mickali02/qod/internal/data"
+	// "github.com/mickali02/qod/internal/validator" // This was unused, so it's commented out for now
 )
 
-func (a *application)createCommentHandler(w http.ResponseWriter,r *http.Request) { 
-	// create a struct to hold a comment
-	// we use struct tags[``] to make the names display in lowercase
+func (a *application) createCommentHandler(w http.ResponseWriter, r *http.Request) {
+	// create a struct to hold the incoming JSON data
 	var incomingData struct {
-		Content  string  `json:"content"`
-		Author   string  `json:"author"`
-	} 
-	
+		Content string `json:"content"`
+		Author  string `json:"author"`
+	}
+
 	// perform the decoding
 	err := a.readJSON(w, r, &incomingData)
 	if err != nil {
 		a.badRequestResponse(w, r, err)
 		return
 	}
-	
-	// for now display the result
-	fmt.Fprintf(w, "%+v\n", incomingData)
+
+	// --- FIX START ---
+	// Create a new data.Comment struct and populate it with the data from the request.
+	// We pass a pointer to this struct to the Insert() method.
+	comment := &data.Comment{
+		Content: incomingData.Content,
+		Author:  incomingData.Author,
 	}
+	// --- FIX END ---
+
+	// Add the comment to the database table.
+	// The Insert() method will update the 'comment' variable with the ID, CreatedAt, and Version.
+	err = a.commentModel.Insert(comment)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Set a Location header. The path to the newly created comment.
+	headers := make(http.Header)
+	headers.Set("Location", fmt.Sprintf("/v1/comments/%d", comment.ID))
+
+	// Send a JSON response with 201 (new resource created) status code
+	data := envelope{
+		"comment": comment,
+	}
+	err = a.writeJSON(w, http.StatusCreated, data, headers)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+}

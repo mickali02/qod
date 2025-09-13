@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+    "net/url"
     "github.com/julienschmidt/httprouter"
 )
 
@@ -131,4 +132,18 @@ func (a *application)readIDParam(r *http.Request)(int64, error) {
     }
 
     return id, nil
+}
+
+// getSingleQueryParameter reads a string value from the query string,
+// with a default if the key is not provided.
+func (a *application) getSingleQueryParameter(qs url.Values, key string, defaultValue string) string {
+	// Get the value for the given key.
+	s := qs.Get(key)
+
+	// If no key exists, return the default value.
+	if s == "" {
+		return defaultValue
+	}
+
+	return s
 }

@@ -165,3 +165,34 @@ func (a *application) deleteCommentHandler(w http.ResponseWriter, r *http.Reques
 		a.serverErrorResponse(w, r, err)
 	}
 }
+
+// Add this handler function to the end of your file
+func (a *application) listCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	// This struct will hold the query string values.
+	var input struct {
+		Content string
+		Author  string
+	}
+
+	// Get the query parameters from the URL
+	queryParameters := r.URL.Query()
+
+	// Use your helper to extract the 'content' and 'author' query string values.
+	// We are providing default empty strings "" if they are not provided.
+	input.Content = a.getSingleQueryParameter(queryParameters, "content", "")
+	input.Author = a.getSingleQueryParameter(queryParameters, "author", "")
+
+	// Call the GetAll() method to retrieve the comments.
+	comments, err := a.commentModel.GetAll(input.Content, input.Author)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Send the JSON response with the list of comments.
+	data := envelope{"comments": comments}
+	err = a.writeJSON(w, http.StatusOK, data, nil)
+	if err != nil {
+		a.serverErrorResponse(w, r, err)
+	}
+}

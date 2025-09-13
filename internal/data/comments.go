@@ -159,4 +159,3 @@ func (c CommentModel) GetAll(content string, author string) ([]*Comment, error) 
 
 	return comments, nil
 }
-

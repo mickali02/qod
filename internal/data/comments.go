@@ -1,78 +1,162 @@
-//Filename: internal/data/comments.go
+// Filename: internal/data/comments.go
 package data
 
-import(
+import (
 	"context"
 	"database/sql"
-	"time"
 	"errors"
+	"time"
+
+	// This is the validator from slides 165-168
+	"github.com/mickali02/qod/internal/validator"
 )
 
-// each name begins with uppercase so that they are exportable/public
+// This is the Comment struct from slide 176
 type Comment struct {
-	ID int64 // unique value for each comment
-	Content string // the comment data
-	Author string // the person who wrote the comment
-	CreatedAt time.Time // database timestamp
-	Version int32 // incremented on each update
-   } 
-
-// A CommentModel expects a connection pool
-type CommentModel struct {
-    DB *sql.DB
+	ID        int64     `json:"id"`
+	Content   string    `json:"content"`
+	Author    string    `json:"author"`
+	CreatedAt time.Time `json:"-"` // The "-" tag means this field will be hidden in JSON responses
+	Version   int32     `json:"version"`
 }
 
-// Insert a new row in the comments table
-// Expects a pointer to the actual comment
+// This is the validation function from slide 173
+func ValidateComment(v *validator.Validator, comment *Comment) {
+	v.Check(comment.Content != "", "content", "must be provided")
+	v.Check(len(comment.Content) <= 100, "content", "must not be more than 100 bytes long")
+
+	v.Check(comment.Author != "", "author", "must be provided")
+	v.Check(len(comment.Author) <= 25, "author", "must not be more than 25 bytes long")
+}
+
+// This is the CommentModel from slide 181
+type CommentModel struct {
+	DB *sql.DB
+}
+
+// This is the Insert method from slides 182-183
 func (c CommentModel) Insert(comment *Comment) error {
-	// the SQL query to be executed against the database table
-	 query := `
+	query := `
 		 INSERT INTO comments (content, author)
 		 VALUES ($1, $2)
-		 RETURNING id, created_at, version
-		 `
-   // the actual values to replace $1, and $2
+		 RETURNING id, created_at, version`
+
 	args := []any{comment.Content, comment.Author}
-	// Create a context with a 3-second timeout. No database
-	// operation should take more than 3 seconds or we will quit it
-	ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	// execute the query against the comments database table. We ask for the the
-	// id, created_at, and version to be sent back to us which we will use
-	// to update the Comment struct later on 
-	return c.DB.QueryRowContext(ctx, query, args...).Scan( &comment.ID, &comment.CreatedAt, &comment.Version)
 
-	}
+	return c.DB.QueryRowContext(ctx, query, args...).Scan(&comment.ID, &comment.CreatedAt, &comment.Version)
+}
 
-// Get a specific Comment from the comments table
+// This is the Get method from slides 191-193
 func (c CommentModel) Get(id int64) (*Comment, error) {
-	// check if the id is valid
-	 if id < 1 {
-		 return nil, ErrRecordNotFound
-	 }
-	// the SQL query to be executed against the database table
-	 query := `
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+	query := `
 		 SELECT id, created_at, content, author, version
 		 FROM comments
-		 WHERE id = $1
-		 `
-// declare a variable of type Comment to store the returned comment
-   var comment Comment
+		 WHERE id = $1`
 
-// Set a 3-second context/timer
-ctx, cancel := context.WithTimeout(context.Background(), 3 * time.Second)
-defer cancel()
+	var comment Comment
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
-err := c.DB.QueryRowContext(ctx, query, id).Scan ( &comment.ID, &comment.CreatedAt, &comment.Content, &comment.Author, &comment.Version,)
-// check for which type of error
-if err != nil {
-    switch {
-        case errors.Is(err, sql.ErrNoRows):
-            return nil, ErrRecordNotFound
-        default:
-            return nil, err
-        }
-    }
-return &comment, nil
+	err := c.DB.QueryRowContext(ctx, query, id).Scan(&comment.ID, &comment.CreatedAt, &comment.Content, &comment.Author, &comment.Version)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+	return &comment, nil
+}
+
+// This is the Update method from slides 208-209
+func (c CommentModel) Update(comment *Comment) error {
+	query := `
+		UPDATE comments
+		SET content = $1, author = $2, version = version + 1
+		WHERE id = $3
+		RETURNING version`
+
+	args := []any{comment.Content, comment.Author, comment.ID}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	return c.DB.QueryRowContext(ctx, query, args...).Scan(&comment.Version)
+}
+
+// This is the Delete method from slides 220-222
+func (c CommentModel) Delete(id int64) error {
+	if id < 1 {
+		return ErrRecordNotFound
+	}
+	query := `
+		DELETE FROM comments
+		WHERE id = $1`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := c.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+
+	return nil
+}
+
+// This is the GetAll method from slides 248-250 (the version with filtering)
+func (c CommentModel) GetAll(content string, author string) ([]*Comment, error) {
+	query := `
+		SELECT id, created_at, content, author, version
+		FROM comments
+		WHERE (to_tsvector('simple', content) @@ plainto_tsquery('simple', $1) OR $1 = '')
+		AND (to_tsvector('simple', author) @@ plainto_tsquery('simple', $2) OR $2 = '')
+		ORDER BY id`
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	rows, err := c.DB.QueryContext(ctx, query, content, author)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	comments := []*Comment{}
+
+	for rows.Next() {
+		var comment Comment
+		err := rows.Scan(
+			&comment.ID,
+			&comment.CreatedAt,
+			&comment.Content,
+			&comment.Author,
+			&comment.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, &comment)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return comments, nil
 }
 

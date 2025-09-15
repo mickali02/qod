@@ -7,6 +7,7 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -28,6 +29,9 @@ type configuration struct {
 	env  string
 	db   struct {
 		dsn string
+	}
+	cors struct {
+		trustedOrigins []string
 	}
 }
 
@@ -53,7 +57,7 @@ func main() {
 	// Initialize logger
 	logger := setupLogger(cfg.env)
 
-	// ---- START: NEW DATABASE CODE ----
+	// ---- DATABASE CODE ----
 	// the call to openDB() sets up our connection pool
 	db, err := openDB(cfg)
 	if err != nil {
@@ -63,7 +67,6 @@ func main() {
 	// release the database resources before exiting
 	defer db.Close()
 	logger.Info("database connection pool established")
-	// ---- END: NEW DATABASE CODE ----
 
 	// Initialize application with dependencies
 	app := &application{
@@ -90,6 +93,12 @@ func loadConfig() configuration {
 
 	// Add this line to read the database DSN
 	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://comments:fishsticks@localhost/comments", "PostgreSQL DSN")
+
+	// This creates a custom flag that can handle a space-separated list of origins.
+	flag.Func("cors-trusted-origins", "Trusted CORS origins (space separated)", func(val string) error {
+		cfg.cors.trustedOrigins = strings.Fields(val)
+		return nil
+	})
 
 	flag.Parse()
 

@@ -172,18 +172,31 @@ func (a *application) listCommentsHandler(w http.ResponseWriter, r *http.Request
 	var input struct {
 		Content string
 		Author  string
+		data.Filters
 	}
 
 	// Get the query parameters from the URL
 	queryParameters := r.URL.Query()
 
-	// Use your helper to extract the 'content' and 'author' query string values.
-	// We are providing default empty strings "" if they are not provided.
-	input.Content = a.getSingleQueryParameter(queryParameters, "content", "")
-	input.Author = a.getSingleQueryParameter(queryParameters, "author", "")
+		queryParametersData.Content = a.getSingleQueryParameter(queryParameters,"content","")      
+
+		queryParametersData.Author = a.getSingleQueryParameter(queryParameters,"author", "")      
+	   // Create a new validator instance
+	   v := validator.New()
+
+	   queryParametersData.Filters.Page = a.getSingleIntegerParameter(queryParameters, "page", 1, v) 
+	   queryParametersData.Filters.PageSize = a.getSingleIntegerParameter(queryParameters, "page_size", 10, v)
+
+	// Check if our filters are valid
+	data.ValidateFilters(v, queryParametersData.Filters)
+	if !v.IsEmpty() {
+			app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
 
 	// Call the GetAll() method to retrieve the comments.
-	comments, err := a.commentModel.GetAll(input.Content, input.Author)
+	comments, err := a.commentModel.GetAll(queryParametersData.Content, queryParametersData.Author,queryParametersData.Filters)
+
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
 		return

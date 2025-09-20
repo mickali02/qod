@@ -119,9 +119,9 @@ func (c CommentModel) Delete(id int64) error {
 }
 
 // This is the GetAll method from slides 248-250 (the version with filtering)
-func (c CommentModel) GetAll(content string, author string, filters Filters) ([]*Comment, error) {
+func (c CommentModel) GetAll(content string, author string, filters Filters) ([]*Comment, Metadata, error) {
 	query := `
-		SELECT id, created_at, content, author, version
+		SELECT COUNT(*) OVER(),id, created_at, content, author, version
 		FROM comments
 		WHERE (to_tsvector('simple', content) @@ plainto_tsquery('simple', $1) OR $1 = '')
 		AND (to_tsvector('simple', author) @@ plainto_tsquery('simple', $2) OR $2 = '')
@@ -134,15 +134,16 @@ func (c CommentModel) GetAll(content string, author string, filters Filters) ([]
 
 	rows, err := c.DB.QueryContext(ctx, query, content, author, filters.limit(), filters.offset())
 	if err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 	defer rows.Close()
-
+	totalRecords := 0
 	comments := []*Comment{}
 
 	for rows.Next() {
 		var comment Comment
 		err := rows.Scan(
+			&totalRecords,
 			&comment.ID,
 			&comment.CreatedAt,
 			&comment.Content,
@@ -150,14 +151,16 @@ func (c CommentModel) GetAll(content string, author string, filters Filters) ([]
 			&comment.Version,
 		)
 		if err != nil {
-			return nil, err
+			return nil, Metadata{}, err
 		}
 		comments = append(comments, &comment)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 
-	return comments, nil
+	metadata := calculateMetaData(totalRecords, filters.Page, filters.PageSize)
+
+	return comments, metadata, nil
 }

@@ -195,7 +195,7 @@ func (a *application) listCommentsHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	// Call the GetAll() method to retrieve the comments.
-	comments, err := a.commentModel.GetAll(queryParametersData.Content, queryParametersData.Author, queryParametersData.Filters)
+	comments, metdata, err := a.commentModel.GetAll(queryParametersData.Content, queryParametersData.Author, queryParametersData.Filters)
 
 	if err != nil {
 		a.serverErrorResponse(w, r, err)
@@ -203,7 +203,7 @@ func (a *application) listCommentsHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	// Send the JSON response with the list of comments.
-	data := envelope{"comments": comments}
+	data := envelope{"comments": comments, "@metadata": metdata}
 	err = a.writeJSON(w, http.StatusOK, data, nil)
 	if err != nil {
 		a.serverErrorResponse(w, r, err)

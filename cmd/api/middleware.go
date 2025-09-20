@@ -1,8 +1,12 @@
 package main
 
 import (
+	"net"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
+	"golang.org/x/time/rate"
 )
 
 func (a *application) recoverPanic(next http.Handler) http.Handler {
@@ -45,6 +49,68 @@ func (a *application) enableCORS(next http.Handler) http.Handler {
 					break
 				}
 			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (a *application) rateLimit(next http.Handler) http.Handler {
+	// Define a client struct to hold the rate limiter and last seen time for each client.
+	type client struct {
+		limiter  *rate.Limiter
+		lastSeen time.Time
+	}
+
+	var (
+		mu      sync.Mutex
+		clients = make(map[string]*client)
+	)
+
+	// A background goroutine to remove old entries from the clients map.
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+			mu.Lock()
+			for ip, client := range clients {
+				if time.Since(client.lastSeen) > 3*time.Minute {
+					delete(clients, ip)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if a.config.limiter.enabled {
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				a.serverErrorResponse(w, r, err)
+				return
+			}
+
+			mu.Lock()
+
+			_, found := clients[ip]
+			// Check if the IP address is already in the map.
+			if  !found {
+				// If it's not found, create a new limiter for this IP.
+				clients[ip] = &client{limiter: rate.NewLimiter(
+											   rate.Limit(a.config.limiter.rps), 
+											   a.config.limiter.burst)}
+			} 
+			// Update the last seen time for the client on every request.
+			clients[ip].lastSeen = time.Now()
+
+			// Check if the request is allowed.
+			if !clients[ip].limiter.Allow() {
+				mu.Unlock()
+				a.rateLimitExceededResponse(w, r)
+				return
+			}
+            
+            // IMPORTANT: Unlock the mutex.
+			mu.Unlock()
 		}
 
 		next.ServeHTTP(w, r)

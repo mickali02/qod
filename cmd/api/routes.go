@@ -26,6 +26,6 @@ func (a *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPatch, "/v1/comments/:id", a.updateCommentHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/comments/:id", a.deleteCommentHandler)
 
-	return a.recoverPanic(a.enableCORS(router))
+	return a.recoverPanic(a.enableCORS(a.rateLimit(router)))
 
 }

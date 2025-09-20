@@ -15,15 +15,7 @@ import (
 	"github.com/mickali02/qod/internal/data"
 )
 
-// Filename: cmd/api/main.go
-// Configuration settings go in here
-// NOTE: For now we are only setting up the
-//
-//	setting for the server.  Later we
-//	will add setting for the DB, rate limiter, etc.
-//	The 'configuration' type is lowercase to
-//	signal that it is private (non-exportable) to the
-//	main package
+
 type configuration struct {
 	port int
 	env  string
@@ -33,17 +25,13 @@ type configuration struct {
 	cors struct {
 		trustedOrigins []string
 	}
+	limiter struct {
+        rps float64                      // requests per second
+        burst int                        // initial requests possible
+        enabled bool                     // enable or disable rate limiter
+    }
 }
 
-// Set up Dependency Injection
-// NOTE: In Go the variable name comes first
-//
-//	and the type comes second
-//	The 'application' type is lowercase to
-//	signal that it is private (non-exportable) to the
-//	main package
-//	'logger' is a pointer because we want to share
-//	one instance of it across the application (centralized logging)
 type application struct {
 	config       configuration
 	logger       *slog.Logger
@@ -99,6 +87,13 @@ func loadConfig() configuration {
 		cfg.cors.trustedOrigins = strings.Fields(val)
 		return nil
 	})
+
+    flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate Limiter maximum requests per second")
+
+    flag.IntVar(&cfg.limiter.burst, "limiter-burst", 5, "Rate Limiter maximum burst")
+
+    flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
 
 	flag.Parse()
 

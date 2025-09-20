@@ -169,7 +169,7 @@ func (a *application) deleteCommentHandler(w http.ResponseWriter, r *http.Reques
 // Add this handler function to the end of your file
 func (a *application) listCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	// This struct will hold the query string values.
-	var input struct {
+	var queryParametersData struct {
 		Content string
 		Author  string
 		data.Filters
@@ -178,24 +178,24 @@ func (a *application) listCommentsHandler(w http.ResponseWriter, r *http.Request
 	// Get the query parameters from the URL
 	queryParameters := r.URL.Query()
 
-		queryParametersData.Content = a.getSingleQueryParameter(queryParameters,"content","")      
+	queryParametersData.Content = a.getSingleQueryParameter(queryParameters, "content", "")
 
-		queryParametersData.Author = a.getSingleQueryParameter(queryParameters,"author", "")      
-	   // Create a new validator instance
-	   v := validator.New()
+	queryParametersData.Author = a.getSingleQueryParameter(queryParameters, "author", "")
+	// Create a new validator instance
+	v := validator.New()
 
-	   queryParametersData.Filters.Page = a.getSingleIntegerParameter(queryParameters, "page", 1, v) 
-	   queryParametersData.Filters.PageSize = a.getSingleIntegerParameter(queryParameters, "page_size", 10, v)
+	queryParametersData.Filters.Page = a.getSingleIntegerParameter(queryParameters, "page", 1, v)
+	queryParametersData.Filters.PageSize = a.getSingleIntegerParameter(queryParameters, "page_size", 10, v)
 
 	// Check if our filters are valid
 	data.ValidateFilters(v, queryParametersData.Filters)
 	if !v.IsEmpty() {
-			app.failedValidationResponse(w, r, v.Errors)
+		a.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
 	// Call the GetAll() method to retrieve the comments.
-	comments, err := a.commentModel.GetAll(queryParametersData.Content, queryParametersData.Author,queryParametersData.Filters)
+	comments, err := a.commentModel.GetAll(queryParametersData.Content, queryParametersData.Author, queryParametersData.Filters)
 
 	if err != nil {
 		a.serverErrorResponse(w, r, err)

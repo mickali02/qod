@@ -11,6 +11,7 @@ import (
 	"strings"
     "net/url"
     "github.com/julienschmidt/httprouter"
+    "github.com/mickali02/qod/internal/validator"
 )
 
 //create an envelope
@@ -136,14 +137,40 @@ func (a *application)readIDParam(r *http.Request)(int64, error) {
 
 // getSingleQueryParameter reads a string value from the query string,
 // with a default if the key is not provided.
-func (a *application) getSingleQueryParameter(qs url.Values, key string, defaultValue string) string {
+func (a *application) getSingleQueryParameter(queryParameters url.Values, key string, defaultValue string) string {
 	// Get the value for the given key.
-	s := qs.Get(key)
+	result := queryParameters.Get(key)
 
 	// If no key exists, return the default value.
-	if s == "" {
+	if result == "" {
 		return defaultValue
 	}
 
-	return s
+	return result
+}                          
+
+// call when we have multiple comma-separated values
+func (a *application)getMultipleQueryParameters( queryParameters url.Values,key string,defaultValue []string) []string {
+	result := queryParameters.Get(key)
+    if result == "" {
+        return defaultValue
+    }
+   return strings.Split(result, ",")
+}
+
+// this method can cause a validation error when trying to convert the
+// string to a valid integer value
+func (a *application)getSingleIntegerParameter( queryParameters url.Values,key string,defaultValue int,v *validator.Validator) int {
+	result := queryParameters.Get(key)
+    if result == "" {
+        return defaultValue
+    }
+   // try to convert to an integer
+   intValue, err := strconv.Atoi(result)
+   if err != nil {
+       v.AddError(key, "must be an integer value")
+       return defaultValue
+   }
+
+   return intValue
 }

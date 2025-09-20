@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+	"fmt"
 
 	// This is the validator from slides 165-168
 	"github.com/mickali02/qod/internal/validator"
@@ -120,14 +121,13 @@ func (c CommentModel) Delete(id int64) error {
 
 // This is the GetAll method from slides 248-250 (the version with filtering)
 func (c CommentModel) GetAll(content string, author string, filters Filters) ([]*Comment, Metadata, error) {
-	query := `
+	query := fmt.Sprintf( `
 		SELECT COUNT(*) OVER(),id, created_at, content, author, version
 		FROM comments
 		WHERE (to_tsvector('simple', content) @@ plainto_tsquery('simple', $1) OR $1 = '')
 		AND (to_tsvector('simple', author) @@ plainto_tsquery('simple', $2) OR $2 = '')
-		ORDER BY id
-		LIMIT $3 OFFSET $4
-		`
+		ORDER BY %s %s, id ASC
+		LIMIT $3 OFFSET $4`, filters.sortColumn(), filters.sortDirection())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

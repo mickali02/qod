@@ -8,7 +8,7 @@ run/api:
 	@go run ./cmd/api -port=4000 -env=development -db-dsn=${COMMENTS_DB_DSN} \
 	-limiter-burst=5 \
 	-limiter-rps=2 \
-	-limiter-enabled=true \
+	-limiter-enabled=false \
 
 	-cors-trusted-origins="http://localhost:9000 http://localhost:9001"
 

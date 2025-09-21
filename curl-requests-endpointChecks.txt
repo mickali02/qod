@@ -6,55 +6,61 @@ echo ""
 
 /---------------------------------  CRUD  ----------------------------------------/
 
-# Create a new quote
-echo "Create a new quote:"
-BODY='{"content":"The only way to do great work is to love what you do.", "author":"Steve Jobs"}'
-curl -i -d "$BODY" localhost:4000/v1/quotes
+# Create a new qcomment
+echo "Create a new comment:"
+BODY='{"content":"Live Laugh Love is my favorite ironic qoute", "author":"Mickali Garbutt"}'
+curl -i -d "$BODY" localhost:4000/v1/comments
 echo ""
 
-# Get a quote by ID
-echo "Get quote with ID 1:"
-curl -i localhost:4000/v1/quotes/1
+# Get a comment by ID
+echo "Get comment with ID 1:"
+curl -i localhost:4000/v1/comments/1
 echo ""
 
-# Update a quote by ID
-echo "Update quote with ID 1:"
-BODY='{"content":"The only way to do great work is to love what you do. - Updated", "author":"Steve Jobs"}'
-curl -i -X PATCH -d "$BODY" localhost:4000/v1/quotes/1
+# Update a comment by ID
+echo "Update comment with ID 1:"
+BODY='{"content":"Live Laugh Live eat more oranges is my favorite qoute. - Updated", "author":"Mickali Garbutt"}'
+curl -i -X PATCH -d "$BODY" localhost:4000/v1/comments/1
 echo ""
 
-# List all quotes
-echo "List all quotes:"
-curl -i localhost:4000/v1/quotes
+# List all comment
+echo "List all comments:"
+curl -i localhost:4000/v1/comments
 echo ""
 
-# Delete a quote by ID
-echo "Delete quote with ID 1:"
-curl -i -X DELETE localhost:4000/v1/quotes/1
+# Delete a comment by ID
+echo "Delete comment with ID 1:"
+curl -i -X DELETE localhost:4000/v1/comments/1
 echo ""
 
 /---------------------------------  PAGINATION  ----------------------------------------/
 
 # Page 1
-curl -i "localhost:4000/v1/quotes?page=1&page_size=2"
+curl -i "localhost:4000/v1/comments?page=1&page_size=2"
+
+# Page 2
+curl -i "localhost:4000/v1/comments?page=2&page_size=2"
 
 # Page 3
-curl -i "localhost:4000/v1/quotes?page=3&page_size=2"
+curl -i "localhost:4000/v1/comments?page=3&page_size=2"
+
+# Page 4
+curl -i "localhost:4000/v1/comments?page=4&page_size=2"
 
 # Non-existent page
-curl -i "localhost:4000/v1/quotes?page=5&page_size=2"
+curl -i "localhost:4000/v1/comments?page=5&page_size=2"
 
 /---------------------------------  SORTING  ----------------------------------------/
 
 
 # Descending order
-curl -i "localhost:4000/v1/quotes?sort=-id"
+curl -i "localhost:4000/v1/comments?sort=-id"
 
 # Author in descending order
-curl -i "localhost:4000/v1/quotes?sort=-author"
+curl -i "localhost:4000/v1/comments?sort=-author"
 
 # Author in descending order and also paginate
-curl -i "localhost:4000/v1/quotes?page_size=4&sort=-author"
+curl -i "localhost:4000/v1/comments?page_size=4&sort=-author"
 
 /---------------------------------  RATE-LIMITING  ----------------------------------------/
 
@@ -69,3 +75,8 @@ set the command line flag in the Makefile to false [-limiter-enabled=false]
 /---------------------------------  GRACEFUL-SHUTDOWN  ----------------------------------------/
 
 just CTRL + C 🤷
+
+/---------------------------------  USER-TABLE  ----------------------------------------/
+
+make db/psql
+\dt
